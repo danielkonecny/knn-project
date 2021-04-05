@@ -1,3 +1,9 @@
+# PROJECT RELATED IGNORES
+output/
+
+
+# PYTHON RELATED IGNORES
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
