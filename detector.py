@@ -94,7 +94,8 @@ def predict(cfg):
         outputs = predictor(im)  # format is documented at https://detectron2.readthedocs.io/tutorials/models.html#model-output-format
         v = Visualizer(im[:, :, ::-1],
                        metadata=board_metadata, 
-                       scale=0.5
+                       scale=0.5,
+                       instance_mode=ColorMode.IMAGE   # remove the colors of unsegmented pixels
         )
         out = v.draw_instance_predictions(outputs["instances"].to("cpu"))
         print(outputs["instances"].pred_classes)
