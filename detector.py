@@ -1,11 +1,11 @@
-# SOURCE: https://towardsdatascience.com/object-detection-in-6-steps-using-detectron2-705b92575578
+# KNN Project - Traffic Sign Detector
+# Authors: Daniel Konecny (xkonec75), Jan Pavlus (xpavlu10), David Sedlak (xsedla1d)
 
+
+import os, json, random
+import numpy as np
+import cv2
 import torch, torchvision
-print(f"Cuda availability: {torch.cuda.is_available()}")
-print(f"PyTorch version: {torch.__version__}")
-print(f"TorchVision version: {torchvision.__version__}")
-# at beginning of the script
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 import detectron2
 from detectron2.utils.logger import setup_logger
@@ -13,84 +13,118 @@ from detectron2 import model_zoo
 from detectron2.engine import DefaultPredictor
 from detectron2.config import get_cfg
 from detectron2.utils.visualizer import Visualizer
-from detectron2.data import MetadataCatalog
-print(f"Detectron2 version: {detectron2.__version__}")
+from detectron2.utils.visualizer import ColorMode
+from detectron2.data import MetadataCatalog, DatasetCatalog
+from detectron2.structures import BoxMode
+from detectron2.engine import DefaultTrainer
+from detectron2.evaluation import COCOEvaluator, inference_on_dataset
+from detectron2.data import build_detection_test_loader
 setup_logger()
 
-import numpy as np
-print(f"NumPy version: {np.__version__}")
 
-import cv2
-print(f"OpenCV version: {cv2.__version__}")
+def define_model():
+    cfg = get_cfg()
+    # add project-specific config (e.g., TensorMask) here if you're not running a model in detectron2's core library
+    cfg.merge_from_file(model_zoo.get_config_file("COCO-Detection/faster_rcnn_R_50_FPN_3x.yaml"))
+    cfg.MODEL.DEVICE = "cpu"
+    # Find a model from detectron2's model zoo. You can use the https://dl.fbaipublicfiles... url as well
+    cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-Detection/faster_rcnn_R_50_FPN_3x.yaml")
 
-import random
+    cfg.DATASETS.TRAIN = ("boardetect_train",)
+    cfg.DATASETS.TEST = ("boardetect_val",)
+    cfg.DATALOADER.NUM_WORKERS = 4
+    cfg.SOLVER.IMS_PER_BATCH = 4
+    cfg.SOLVER.BASE_LR = 0.0125  # pick a good LR
+    cfg.SOLVER.MAX_ITER = 1000    # 300 iterations seems good enough for this toy dataset; you will need to train longer for a practical dataset
+    cfg.SOLVER.STEPS = []        # do not decay learning rate
+    cfg.TEST.EVAL_PERIOD = 50
+    cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 256   # faster, and good enough for this toy dataset (default: 512)
+    cfg.MODEL.ROI_HEADS.NUM_CLASSES = 3  # only has one class (ballon). (see https://detectron2.readthedocs.io/tutorials/datasets.html#update-the-config-for-new-datasets)
+    # NOTE: this config means the number of classes, but a few popular unofficial tutorials incorrect uses num_classes+1 here.
+    return cfg
 
-import json
-from detectron2.structures import BoxMode
 
-def get_board_dicts(imgdir):
-    json_file = imgdir+"/dataset.json"
+# if your dataset is in COCO format, this cell can be replaced by the following three lines:
+# from detectron2.data.datasets import register_coco_instances
+# register_coco_instances("my_dataset_train", {}, "json_annotation_train.json", "path/to/image/dir")
+# register_coco_instances("my_dataset_val", {}, "json_annotation_val.json", "path/to/image/dir")
+
+def load_dataset(path):
+    json_file = path+"/dataset.json"
     with open(json_file) as f:
         dataset_dicts = json.load(f)
     for i in dataset_dicts:
         filename = i["file_name"] 
-        i["file_name"] = imgdir+"/"+filename 
+        i["file_name"] = path+"/"+filename 
         for j in i["annotations"]:
             j["bbox_mode"] = BoxMode.XYWH_ABS
             j["category_id"] = int(j["category_id"])
     return dataset_dicts
 
 
-from detectron2.data import DatasetCatalog, MetadataCatalog
-
-for d in ["train", "val"]:
-    DatasetCatalog.register("boardetect_" + d, lambda d=d: get_board_dicts("Text_Detection_Dataset_COCO_Format/" + d))
-    MetadataCatalog.get("boardetect_" + d).set(thing_classes=["HINDI","ENGLISH","OTHER"])
-board_metadata = MetadataCatalog.get("boardetect_train")
-
-
-#Visualizing the Train Dataset
-dataset_dicts = get_board_dicts("Text_Detection_Dataset_COCO_Format/train")
-#Randomly choosing 3 images from the Set
-#for d in random.sample(dataset_dicts, 3):
-#    img = cv2.imread(d["file_name"])
-#    visualizer = Visualizer(img[:, :, ::-1], metadata=board_metadata)
-#    vis = visualizer.draw_dataset_dict(d)
-#    cv2.imshow('', vis.get_image()[:, :, ::-1])
-#    cv2.waitKey(1000)
+def preview_dataset():
+    dataset_dicts = load_dataset("Text_Detection_Dataset_COCO_Format/train")
+    for d in random.sample(dataset_dicts, 3):
+        img = cv2.imread(d["file_name"])
+        visualizer = Visualizer(img[:, :, ::-1], metadata=board_metadata, scale=0.5)
+        out = visualizer.draw_dataset_dict(d)
+        cv2.imshow('', out.get_image()[:, :, ::-1])
+        cv2.waitKey(1000)
+        cv2.destroyAllWindows()
+        cv2.waitKey(1)
 
 
-#We are importing our own Trainer Module here to use the COCO validation evaluation during training. Otherwise no validation eval occurs.
-from detectron2.engine import DefaultTrainer
-from detectron2.evaluation import COCOEvaluator
-
-class CocoTrainer(DefaultTrainer):
-    @classmethod
-    def build_evaluator(cls, cfg, dataset_name, output_folder=None):
-        if output_folder is None:
-            os.makedirs("coco_eval", exist_ok=True)
-            output_folder = "coco_eval"
-        return COCOEvaluator(dataset_name, cfg, False, output_folder)
+def train(cfg):
+    os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
+    trainer = DefaultTrainer(cfg) 
+    trainer.resume_or_load(resume=False)
+    trainer.train()
+    return trainer
 
 
-from detectron2.engine import DefaultTrainer
-from detectron2.config import get_cfg
-import os
+def predict(cfg):
+    cfg.MODEL.WEIGHTS = os.path.join(cfg.OUTPUT_DIR, "model_final.pth")  # path to the model we just trained
+    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.7   # set a custom testing threshold
 
-cfg = get_cfg()
-cfg.merge_from_file(model_zoo.get_config_file("COCO-Detection/faster_rcnn_R_50_FPN_3x.yaml"))
-cfg.MODEL.DEVICE = "cpu"
-cfg.DATASETS.TRAIN = ("boardetect_train",)
-cfg.DATASETS.TEST = ("boardetect_val",)
-cfg.DATALOADER.NUM_WORKERS = 4
-cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-Detection/faster_rcnn_R_50_FPN_3x.yaml")  # Let training initialize from model zoo
-cfg.SOLVER.IMS_PER_BATCH = 4
-cfg.SOLVER.BASE_LR = 0.0125  # pick a good LR
-cfg.SOLVER.MAX_ITER = 1500   
-cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 256  
-cfg.MODEL.ROI_HEADS.NUM_CLASSES = 3 # No. of classes = [HINDI, ENGLISH, OTHER]
-cfg.TEST.EVAL_PERIOD = 500
-os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
-trainer = CocoTrainer(cfg) 
-trainer.resume_or_load(resume=False)
-trainer.train()
+    predictor = DefaultPredictor(cfg)
+
+    dataset_dicts = load_dataset("Text_Detection_Dataset_COCO_Format/val")
+    for d in random.sample(dataset_dicts, 3):    
+        im = cv2.imread(d["file_name"])
+        outputs = predictor(im)  # format is documented at https://detectron2.readthedocs.io/tutorials/models.html#model-output-format
+        v = Visualizer(im[:, :, ::-1],
+                       metadata=board_metadata, 
+                       scale=0.5
+        )
+        out = v.draw_instance_predictions(outputs["instances"].to("cpu"))
+        print(outputs["instances"].pred_classes)
+        print(outputs["instances"].pred_boxes)
+        cv2.imshow('', out.get_image()[:, :, ::-1])
+        cv2.waitKey(1000)
+        cv2.destroyAllWindows()
+        cv2.waitKey(1)
+
+
+def evaluate(cfg, trainer):
+    cfg.MODEL.WEIGHTS = os.path.join(cfg.OUTPUT_DIR, "model_final.pth")  # path to the model we just trained
+    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.7   # set a custom testing threshold
+
+    evaluator = COCOEvaluator("boardetect_val", distributed=False, output_dir="./output/")
+    val_loader = build_detection_test_loader(cfg, "boardetect_val")
+    print(inference_on_dataset(trainer.model, val_loader, evaluator))
+    # another equivalent way to evaluate the model is to use `trainer.test`
+
+
+if __name__ == '__main__':
+    for d in ["train", "val"]:
+        DatasetCatalog.register("boardetect_" + d, lambda d=d: load_dataset("Text_Detection_Dataset_COCO_Format/" + d))
+        MetadataCatalog.get("boardetect_" + d).set(thing_classes=["HINDI","ENGLISH","OTHER"])
+    board_metadata = MetadataCatalog.get("boardetect_train")
+    preview_dataset()
+
+    training_model = define_model()
+    trainer = train(training_model)
+
+    predict(training_model)
+
+    evaluate(training_model, trainer)
