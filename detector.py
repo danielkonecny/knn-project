@@ -33,8 +33,8 @@ def define_model():
     # Find a model from detectron2's model zoo. You can use the https://dl.fbaipublicfiles... url as well
     cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-Detection/faster_rcnn_R_50_FPN_3x.yaml")
 
-    cfg.DATASETS.TRAIN = ("boardetect_train",)
-    cfg.DATASETS.TEST = ("boardetect_val",)
+    cfg.DATASETS.TRAIN = ("traffic_signs_train",)
+    cfg.DATASETS.TEST = ("traffic_signs_val",)
     cfg.DATALOADER.NUM_WORKERS = 4
     cfg.SOLVER.IMS_PER_BATCH = 4
     cfg.SOLVER.BASE_LR = 0.0125  # pick a good LR
@@ -42,7 +42,7 @@ def define_model():
     cfg.SOLVER.STEPS = []        # do not decay learning rate
     cfg.TEST.EVAL_PERIOD = 50
     cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 256   # faster, and good enough for this toy dataset (default: 512)
-    cfg.MODEL.ROI_HEADS.NUM_CLASSES = 3  # only has one class (ballon). (see https://detectron2.readthedocs.io/tutorials/datasets.html#update-the-config-for-new-datasets)
+    cfg.MODEL.ROI_HEADS.NUM_CLASSES = 400 # only has one class (ballon). (see https://detectron2.readthedocs.io/tutorials/datasets.html#update-the-config-for-new-datasets)
     # NOTE: this config means the number of classes, but a few popular unofficial tutorials incorrect uses num_classes+1 here.
     return cfg
 
@@ -78,12 +78,12 @@ def fetch_classes(path):
     return classes
 
 
-def load_mapillary_dataset(path):
+def load_mapillary_dataset(path, split="train"):
     annotations_folder = path+"/mtsd_v2_fully_annotated_annotation/mtsd_v2_fully_annotated/"
-    train_images_folder = path+"/mtsd_v2_fully_annotated_images.train/images/"
+    train_images_folder = path+"/mtsd_v2_fully_annotated_images." + split + "/images/"
     images = set([os.path.splitext(f)[0] for f in os.listdir(train_images_folder) if os.path.isfile(os.path.join(train_images_folder, f))])
 
-    with open(annotations_folder + "/splits/train.txt") as f:
+    with open(annotations_folder + "/splits/" + split + ".txt") as f:
         train_data = [i.rstrip("\n ") for i in f.readlines()]
 
     dataset_dicts = []
@@ -116,7 +116,7 @@ def load_mapillary_dataset(path):
 
 
 def preview_dataset():
-    dataset_dicts = load_dataset("Text_Detection_Dataset_COCO_Format/train")
+    dataset_dicts = load_mapillary_dataset("mapillary", "train")
     for d in random.sample(dataset_dicts, 3):
         img = cv2.imread(d["file_name"])
         visualizer = Visualizer(img[:, :, ::-1], metadata=board_metadata, scale=0.5)
@@ -141,7 +141,7 @@ def predict(cfg):
 
     predictor = DefaultPredictor(cfg)
 
-    dataset_dicts = load_dataset("Text_Detection_Dataset_COCO_Format/val")
+    dataset_dicts = load_mapillary_dataset("mapillary", "val")
     for d in random.sample(dataset_dicts, 3):
         im = cv2.imread(d["file_name"])
         outputs = predictor(im)  # format is documented at https://detectron2.readthedocs.io/tutorials/models.html#model-output-format
@@ -163,17 +163,17 @@ def evaluate(cfg, trainer):
     cfg.MODEL.WEIGHTS = os.path.join(cfg.OUTPUT_DIR, "model_final.pth")  # path to the model we just trained
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.7   # set a custom testing threshold
 
-    evaluator = COCOEvaluator("boardetect_val", distributed=False, output_dir="./output/")
-    val_loader = build_detection_test_loader(cfg, "boardetect_val")
+    evaluator = COCOEvaluator("traffic_signs_val", distributed=False, output_dir="./output/")
+    val_loader = build_detection_test_loader(cfg, "traffic_signs_val")
     print(inference_on_dataset(trainer.model, val_loader, evaluator))
     # another equivalent way to evaluate the model is to use `trainer.test`
 
 
 if __name__ == '__main__':
     for d in ["train", "val"]:
-        DatasetCatalog.register("boardetect_" + d, lambda d=d: load_dataset("Text_Detection_Dataset_COCO_Format/" + d))
-        MetadataCatalog.get("boardetect_" + d).set(thing_classes=["HINDI","ENGLISH","OTHER"])
-    board_metadata = MetadataCatalog.get("boardetect_train")
+        DatasetCatalog.register("traffic_signs_" + d, lambda d=d: load_mapillary_dataset("mapillary/", d))
+        MetadataCatalog.get("traffic_signs_" + d).set(thing_classes=list(classes_dict.keys()))
+    board_metadata = MetadataCatalog.get("traffic_signs_train")
     preview_dataset()
 
     training_model = define_model()
