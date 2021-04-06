@@ -54,11 +54,48 @@ def load_dataset(path):
     with open(json_file) as f:
         dataset_dicts = json.load(f)
     for i in dataset_dicts:
-        filename = i["file_name"] 
-        i["file_name"] = path+"/"+filename 
+        filename = i["file_name"]
+        i["file_name"] = path+"/"+filename
         for j in i["annotations"]:
             j["bbox_mode"] = BoxMode.XYWH_ABS
             j["category_id"] = int(j["category_id"])
+    return dataset_dicts
+
+
+def load_mapillary_dataset(path):
+    annotations_folder = path+"/mtsd_v2_fully_annotated_annotation/mtsd_v2_fully_annotated/"
+    train_images_folder = path+"/mtsd_v2_fully_annotated_images.train/images/"
+    images = set([os.path.splitext(f)[0] for f in os.listdir(train_images_folder) if os.path.isfile(os.path.join(train_images_folder, f))])
+
+    with open(annotations_folder + "/splits/train.txt") as f:
+        train_data = [i.rstrip("\n ") for i in f.readlines()]
+
+    dataset_dicts = []
+    for filename in train_data:
+        if filename in images:
+            try:
+                with open(annotations_folder + "/annotations/" + filename + ".json") as f:
+                    annotation = json.load(f)
+
+                    annotations = []
+                    for obj in annotation['objects']:
+                        annot = {
+                            'bbox' : [obj['bbox']['xmin'], obj['bbox']['ymin'], obj['bbox']['xmax'], obj['bbox']['ymax']],
+                            'bbox_mode' : BoxMode.XYXY_ABS,
+                            'category_id': 0,
+                        }
+                        annotations.append(annot)
+                    image_info = {
+                        'image_id': filename,
+                        'file_name': os.path.join(train_images_folder, filename + ".jpg"),
+                        'height': annotation['height'],
+                        'width': annotation['width'],
+                        'annotations': annotations
+                    }
+                    dataset_dicts.append(image_info)
+            except FileNotFoundError:
+                print(f"Annotation file for {filename} not found.")
+
     return dataset_dicts
 
 
@@ -76,7 +113,7 @@ def preview_dataset():
 
 def train(cfg):
     os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
-    trainer = DefaultTrainer(cfg) 
+    trainer = DefaultTrainer(cfg)
     trainer.resume_or_load(resume=False)
     trainer.train()
     return trainer
@@ -89,11 +126,11 @@ def predict(cfg):
     predictor = DefaultPredictor(cfg)
 
     dataset_dicts = load_dataset("Text_Detection_Dataset_COCO_Format/val")
-    for d in random.sample(dataset_dicts, 3):    
+    for d in random.sample(dataset_dicts, 3):
         im = cv2.imread(d["file_name"])
         outputs = predictor(im)  # format is documented at https://detectron2.readthedocs.io/tutorials/models.html#model-output-format
         v = Visualizer(im[:, :, ::-1],
-                       metadata=board_metadata, 
+                       metadata=board_metadata,
                        scale=0.5,
                        instance_mode=ColorMode.IMAGE   # remove the colors of unsegmented pixels
         )
