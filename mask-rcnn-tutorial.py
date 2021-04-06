@@ -89,15 +89,15 @@ def load_dataset(path):
     dataset_dicts = []
     for idx, v in enumerate(imgs_anns.values()):
         record = {}
-        
+
         filename = os.path.join(path, v["filename"])
         height, width = cv2.imread(filename).shape[:2]
-        
+
         record["file_name"] = filename
         record["image_id"] = idx
         record["height"] = height
         record["width"] = width
-      
+
         annos = v["regions"]
         objs = []
         for _, anno in annos.items():
@@ -132,7 +132,7 @@ def preview_dataset():
 
 def train(cfg):
     os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
-    trainer = DefaultTrainer(cfg) 
+    trainer = DefaultTrainer(cfg)
     trainer.resume_or_load(resume=False)
     trainer.train()
 
@@ -144,12 +144,12 @@ def predict(cfg):
     predictor = DefaultPredictor(cfg)
 
     dataset_dicts = load_dataset("balloon/val")
-    for d in random.sample(dataset_dicts, 3):    
+    for d in random.sample(dataset_dicts, 3):
         im = cv2.imread(d["file_name"])
         outputs = predictor(im)  # format is documented at https://detectron2.readthedocs.io/tutorials/models.html#model-output-format
         v = Visualizer(im[:, :, ::-1],
-                       metadata=balloon_metadata, 
-                       scale=0.5, 
+                       metadata=balloon_metadata,
+                       scale=0.5,
                        instance_mode=ColorMode.IMAGE_BW   # remove the colors of unsegmented pixels. This option is only available for segmentation models
         )
         out = v.draw_instance_predictions(outputs["instances"].to("cpu"))
@@ -160,7 +160,7 @@ def predict(cfg):
 def evaluate(cfg):
     cfg.MODEL.WEIGHTS = os.path.join(cfg.OUTPUT_DIR, "model_final.pth")  # path to the model we just trained
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.7   # set a custom testing threshold
-    
+
     # FIXME - probably has to be the trainer that is trained in the train() function, not just loaded.
     trainer = DefaultTrainer(cfg)
 
