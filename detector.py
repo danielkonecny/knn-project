@@ -19,6 +19,9 @@ from detectron2.structures import BoxMode
 from detectron2.engine import DefaultTrainer
 from detectron2.evaluation import COCOEvaluator, inference_on_dataset
 from detectron2.data import build_detection_test_loader
+
+from classes import classes_dict
+
 setup_logger()
 
 
@@ -62,6 +65,19 @@ def load_dataset(path):
     return dataset_dicts
 
 
+def fetch_classes(path):
+    annotations_folder = path+"/mtsd_v2_fully_annotated_annotation/mtsd_v2_fully_annotated/"
+    _, _, annots = next(os.walk(annotations_folder + "/annotations"))
+    classes = set()
+    for annot_file in annots:
+        with open(annotations_folder + "/annotations/" + annot_file) as f:
+            a = json.load(f)
+            for obj in a['objects']:
+                classes.add(obj['label'])
+
+    return classes
+
+
 def load_mapillary_dataset(path):
     annotations_folder = path+"/mtsd_v2_fully_annotated_annotation/mtsd_v2_fully_annotated/"
     train_images_folder = path+"/mtsd_v2_fully_annotated_images.train/images/"
@@ -82,7 +98,7 @@ def load_mapillary_dataset(path):
                         annot = {
                             'bbox' : [obj['bbox']['xmin'], obj['bbox']['ymin'], obj['bbox']['xmax'], obj['bbox']['ymax']],
                             'bbox_mode' : BoxMode.XYXY_ABS,
-                            'category_id': 0,
+                            'category_id': classes_dict[obj['label']]
                         }
                         annotations.append(annot)
                     image_info = {
