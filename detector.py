@@ -20,7 +20,7 @@ from detectron2.engine import DefaultTrainer
 from detectron2.evaluation import COCOEvaluator, inference_on_dataset
 from detectron2.data import build_detection_test_loader
 
-from classes import classes_dict
+from classes import grouped_classes_dict
 
 setup_logger()
 
@@ -42,7 +42,7 @@ def define_model():
     cfg.SOLVER.STEPS = []        # do not decay learning rate
     cfg.TEST.EVAL_PERIOD = 50
     cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 256   # faster, and good enough for this toy dataset (default: 512)
-    cfg.MODEL.ROI_HEADS.NUM_CLASSES = len(classes_dict.keys()) # only has one class (ballon). (see https://detectron2.readthedocs.io/tutorials/datasets.html#update-the-config-for-new-datasets)
+    cfg.MODEL.ROI_HEADS.NUM_CLASSES = len(grouped_classes_dict.keys()) # only has one class (ballon). (see https://detectron2.readthedocs.io/tutorials/datasets.html#update-the-config-for-new-datasets)
     # NOTE: this config means the number of classes, but a few popular unofficial tutorials incorrect uses num_classes+1 here.
     return cfg
 
@@ -98,7 +98,7 @@ def load_mapillary_dataset(path, split="train"):
                         annot = {
                             'bbox' : [obj['bbox']['xmin'], obj['bbox']['ymin'], obj['bbox']['xmax'], obj['bbox']['ymax']],
                             'bbox_mode' : BoxMode.XYXY_ABS,
-                            'category_id': classes_dict[obj['label']]
+                            'category_id': grouped_classes_dict[obj['label'].split('--')[0]]
                         }
                         annotations.append(annot)
                     image_info = {
@@ -172,7 +172,7 @@ def evaluate(cfg, trainer):
 if __name__ == '__main__':
     for d in ["train", "val"]:
         DatasetCatalog.register("traffic_signs_" + d, lambda d=d: load_mapillary_dataset("mapillary/", d))
-        MetadataCatalog.get("traffic_signs_" + d).set(thing_classes=list(classes_dict.keys()))
+        MetadataCatalog.get("traffic_signs_" + d).set(thing_classes=list(grouped_classes_dict.keys()))
     board_metadata = MetadataCatalog.get("traffic_signs_train")
     preview_dataset()
 

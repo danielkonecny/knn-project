@@ -1,3 +1,11 @@
+grouped_classes_dict = {
+    "warning" : 0,
+    "other-sign" : 1,
+    "information" : 2,
+    "regulatory" : 3,
+    "complementary" : 4
+}
+
 classes_dict = {
     "regulatory--priority-over-oncoming-vehicles--g1" : 0,
     "warning--accidental-area-unsure--g2" : 1,
