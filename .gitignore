@@ -1,6 +1,8 @@
 # PROJECT RELATED IGNORES
 output/
 
+# .idea editor config folder
+.idea
 
 # PYTHON RELATED IGNORES
 
