@@ -1,3 +1,23 @@
+# KNN Project - Traffic Sign Detector
+# Authors: Daniel Konecny (xkonec75), Jan Pavlus (xpavlu10), David Sedlak (xsedla1d)
+
+import json
+
+from os import walk
+
+def fetch_classes(path):
+    annotations_folder = path+"/mtsd_v2_fully_annotated_annotation/mtsd_v2_fully_annotated/"
+    _, _, annots = next(walk(annotations_folder + "/annotations"))
+    classes = set()
+    for annot_file in annots:
+        with open(annotations_folder + "/annotations/" + annot_file) as f:
+            a = json.load(f)
+            for obj in a['objects']:
+                classes.add(obj['label'])
+
+    return classes
+
+
 grouped_classes_dict = {
     "warning" : 0,
     "other-sign" : 1,
@@ -5,6 +25,7 @@ grouped_classes_dict = {
     "regulatory" : 3,
     "complementary" : 4
 }
+
 
 classes_dict = {
     "regulatory--priority-over-oncoming-vehicles--g1" : 0,
