@@ -9,13 +9,16 @@ import os
 from detectron2.data import MetadataCatalog
 from detectron2.structures import BoxMode
 from detectron2.utils.visualizer import Visualizer
-from classes import grouped_classes_dict
+
+from detector.classes import grouped_classes_dict
 
 
 def load_mapillary_dataset(path, split="train"):
-    annotations_folder = path+"/mtsd_v2_fully_annotated_annotation/mtsd_v2_fully_annotated/"
+    annotations_folder = path+"/mtsd_v2_fully_annotated_annotation" \
+                              "/mtsd_v2_fully_annotated/"
     train_images_folder = path+"/mtsd_v2_fully_annotated_images." + split + "/images/"
-    images = set([os.path.splitext(f)[0] for f in os.listdir(train_images_folder) if os.path.isfile(os.path.join(train_images_folder, f))])
+    images = set([os.path.splitext(f)[0] for f in os.listdir(train_images_folder)
+                  if os.path.isfile(os.path.join(train_images_folder, f))])
 
     with open(annotations_folder + "/splits/" + split + ".txt") as f:
         train_data = [i.rstrip("\n ") for i in f.readlines()]
@@ -30,7 +33,10 @@ def load_mapillary_dataset(path, split="train"):
                     annotations = []
                     for obj in annotation['objects']:
                         annot = {
-                            'bbox' : [obj['bbox']['xmin'], obj['bbox']['ymin'], obj['bbox']['xmax'], obj['bbox']['ymax']],
+                            'bbox' : [obj['bbox']['xmin'],
+                                      obj['bbox']['ymin'],
+                                      obj['bbox']['xmax'],
+                                      obj['bbox']['ymax']],
                             'bbox_mode' : BoxMode.XYXY_ABS,
                             'category_id': grouped_classes_dict[obj['label'].split('--')[0]]
                         }
@@ -49,11 +55,12 @@ def load_mapillary_dataset(path, split="train"):
     return dataset_dicts
 
 
-def preview_dataset(dataset):
-    dataset_dicts = load_mapillary_dataset("mapillary", "train")
+def preview_dataset(dataset, path):
+    dataset_dicts = load_mapillary_dataset(path, "train")
     for d in random.sample(dataset_dicts, 3):
         img = cv2.imread(d["file_name"])
-        visualizer = Visualizer(img[:, :, ::-1], metadata=MetadataCatalog.get(dataset), scale=0.5)
+        visualizer = Visualizer(img[:, :, ::-1], metadata=MetadataCatalog.get(dataset),
+                                scale=0.5)
         out = visualizer.draw_dataset_dict(d)
         cv2.imshow('', out.get_image()[:, :, ::-1])
         cv2.waitKey(1000)

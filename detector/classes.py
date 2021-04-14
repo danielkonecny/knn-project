@@ -5,6 +5,7 @@ import json
 
 from os import walk
 
+
 def fetch_classes(path):
     annotations_folder = path+"/mtsd_v2_fully_annotated_annotation/mtsd_v2_fully_annotated/"
     _, _, annots = next(walk(annotations_folder + "/annotations"))
