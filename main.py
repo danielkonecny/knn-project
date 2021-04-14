@@ -70,8 +70,13 @@ def main(argv=None):
 
     # load dataset
     for d in ["train", "test", "val"]:
-        DatasetCatalog.register("traffic_signs_" + d, lambda d=d: load_mapillary_dataset(args.dataset, d))
-        MetadataCatalog.get("traffic_signs_" + d).set(thing_classes=list(grouped_classes_dict.keys()))
+        DatasetCatalog.register(
+            "traffic_signs_" + d,
+            lambda d=d: load_mapillary_dataset(args.dataset, d)
+        )
+        MetadataCatalog.get("traffic_signs_" + d).set(
+            thing_classes=list(grouped_classes_dict.keys())
+        )
 
     if args.preview:
         preview_dataset(args.dataset, "traffic_signs_train")

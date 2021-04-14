@@ -4,6 +4,7 @@
 import os
 import random
 import cv2
+import datetime
 
 from detectron2.config import get_cfg
 from detectron2.data import MetadataCatalog, build_detection_test_loader
@@ -16,14 +17,15 @@ from detector.classes import grouped_classes_dict
 from detector.dataset import load_mapillary_dataset
 
 
-def define_model(train_dts, test_dts, device, model, lr, iterations, batch_size):
+def define_model(train_dts, val_dts, device, model, lr, iterations, batch_size):
     cfg = get_cfg()
+    cfg.OUTPUT_DIR = "output-" + datetime.datetime.now().strftime("%d-%m-%Y-(%H:%M:%S)")
     cfg.merge_from_file(model_zoo.get_config_file(model))
     cfg.MODEL.DEVICE = device
     cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(model)
 
     cfg.DATASETS.TRAIN = (train_dts,)
-    cfg.DATASETS.TEST = (test_dts,)
+    cfg.DATASETS.TEST = (val_dts,)
     cfg.DATALOADER.NUM_WORKERS = 4
     cfg.SOLVER.IMS_PER_BATCH = 4
     cfg.SOLVER.BASE_LR = lr
@@ -37,7 +39,12 @@ def define_model(train_dts, test_dts, device, model, lr, iterations, batch_size)
 
 
 def train(cfg):
-    os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
+    os.makedirs(cfg.OUTPUT_DIR)
+
+    # log model setup
+    with open(cfg.OUTPUT_DIR + "/model-setup.log", "w") as f:
+        f.write(str(cfg))
+
     trainer = DefaultTrainer(cfg)
     trainer.resume_or_load(resume=False)
     trainer.train()
@@ -77,7 +84,7 @@ def evaluate(cfg, trainer):
     evaluator = COCOEvaluator(
         "traffic_signs_val",
         distributed=False,
-        output_dir="./output/"
+        output_dir=cfg.OUTPUT_DIR
     )
     val_loader = build_detection_test_loader(cfg, "traffic_signs_val")
     print(inference_on_dataset(trainer.model, val_loader, evaluator))
