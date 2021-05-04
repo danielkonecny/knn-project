@@ -84,7 +84,7 @@ def main(argv=None):
     # define model
     training_model = define_model(
         train_dts="traffic_signs_train",
-        test_dts="traffic_signs_val",
+        val_dts="traffic_signs_val",
         device=args.device,
         model=args.model,
         lr=args.learning_rate,
