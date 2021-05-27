@@ -159,8 +159,7 @@ def main(argv=None):
 
     file_index = 0
 
-    # for image_name in image_names:
-    for image_name in image_names[:100]:
+    for image_name in image_names:
         print(f'Reading file {image_name}.')
         image, annotation = load_image(args.dataset, image_name)
         new_samples = extract_samples(image, annotation, dimension_y, dimension_x, dimension_z)
@@ -174,8 +173,7 @@ def main(argv=None):
         grouped_labels = np.concatenate((grouped_labels, new_grouped_labels))
         detailed_labels = np.concatenate((detailed_labels, new_detailed_labels))
 
-        # if len(samples) > 5000:
-        if len(samples) > 10:
+        if len(samples) > 5000:
             save_as_nd_array(args.output, samples, grouped_labels, detailed_labels, file_index)
             file_index += 1
 
