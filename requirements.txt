@@ -1,5 +1,5 @@
 numpy
-opencv-python
+opencv-python~=4.5.1.48
 PyYAML==5.4.1
 --find-links https://download.pytorch.org/whl/torch_stable.html
 torch==1.8.1+cpu
@@ -7,3 +7,6 @@ torch==1.8.1+cpu
 torchvision==0.9.1+cpu
 --find-links https://dl.fbaipublicfiles.com/detectron2/wheels/cpu/torch1.8/index.html
 detectron2==0.4+cpu
+
+matplotlib~=3.4.1
+Pillow~=8.2.0
