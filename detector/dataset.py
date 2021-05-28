@@ -2,10 +2,13 @@
 # Authors: Daniel Konecny (xkonec75), Jan Pavlus (xpavlu10), David Sedlak (xsedla1d)
 
 import json
+import math
 import cv2
 import random
 import os
+import numpy as np
 
+from PIL import Image
 from detectron2.data import MetadataCatalog
 from detectron2.structures import BoxMode
 from detectron2.utils.visualizer import Visualizer
@@ -66,3 +69,22 @@ def preview_dataset(dataset, path):
         cv2.waitKey(1000)
         cv2.destroyAllWindows()
         cv2.waitKey(1)
+
+
+def crop_detected_signs(im, annotations, dimension_y, dimension_x):
+    pimage = Image.fromarray(im)
+    croped_all = []
+
+    for box in annotations["instances"].get_fields()["pred_boxes"]:
+        x_min = math.floor(box[0])
+        y_min = math.floor(box[1])
+        x_max = math.ceil(box[2])
+        y_max = math.ceil(box[3])
+
+        cropped = pimage.crop((x_min, y_min, x_max, y_max))
+        resized = cropped.resize((dimension_y, dimension_x), Image.ANTIALIAS)
+        numpyed = np.array(resized)
+        numpyed = numpyed.astype('float32') / 255.0
+        croped_all.append(numpyed)
+
+    return np.array(croped_all)
