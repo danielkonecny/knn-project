@@ -75,7 +75,13 @@ def crop_detected_signs(im, annotations, dimension_y, dimension_x):
     pimage = Image.fromarray(im)
     croped_all = []
 
-    for box in annotations["instances"].get_fields()["pred_boxes"]:
+    try:
+        boxes = annotations["instances"].get_fields()["pred_boxes"]
+    except IndexError:
+        # no annotations
+        return np.array([])
+
+    for box in boxes:
         x_min = math.floor(box[0])
         y_min = math.floor(box[1])
         x_max = math.ceil(box[2])
