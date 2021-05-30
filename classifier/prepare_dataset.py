@@ -40,6 +40,11 @@ def parse_args(argv):
         default="401",
         help="Number of labels."
     )
+    parser.add_argument(
+        "-T", "--type",
+        default="train",
+        help="train/val/test"
+    )
     args = parser.parse_args(argv)
     return args
 
@@ -51,18 +56,18 @@ def parse_dimensions(dim_string):
     return dimension_y, dimension_x, dimension_z
 
 
-def get_all_samples(path):
-    with open(f'{path}/mtsd_v2_fully_annotated_annotation/mtsd_v2_fully_annotated/splits/train.txt') as f:
+def get_all_samples(path,typeOfData):
+    with open(f'{path}/mtsd_v2_fully_annotated_annotation/mtsd_v2_fully_annotated/splits/{typeOfData}.txt') as f:
         lines = [line.rstrip() for line in f]
     return lines
 
 
-def load_image(path, filename):
+def load_image(path, filename, typeOfData):
     try:
-        image = Image.open(f'{path}/mtsd_v2_fully_annotated_images.train/images/{filename}.jpg')
+        image = Image.open(f'{path}/mtsd_v2_fully_annotated_images.{typeOfData}/images/{filename}.jpg')
     except OSError:
         time.sleep(3)
-        image = Image.open(f'{path}/mtsd_v2_fully_annotated_images.train/images/{filename}.jpg')
+        image = Image.open(f'{path}/mtsd_v2_fully_annotated_images.{typeOfData}/images/{filename}.jpg')
 
     try:
         with open(f'{path}/mtsd_v2_fully_annotated_annotation/mtsd_v2_fully_annotated/annotations/{filename}.json') as f:
@@ -231,7 +236,7 @@ def main(argv=None):
     splits_labels = {}
     split_file_indexes = {}
 
-    image_names = get_all_samples(args.dataset)
+    image_names = get_all_samples(args.dataset, args.type)
 
     for split_name in split_names:
         splits_samples[split_name] = np.empty((0, dimension_y, dimension_x, dimension_z))
@@ -247,7 +252,7 @@ def main(argv=None):
 
     for i, image_name in enumerate(image_names):
         print(f'Reading file {image_name}. Progress: {i}/{image_count}.')
-        image, annotation = load_image(args.dataset, image_name)
+        image, annotation = load_image(args.dataset, image_name, args.type)
 
         new_samples = extract_samples(image, annotation, dimension_y, dimension_x, dimension_z)
         new_grouped_labels, new_splitted_labels = get_labels(annotation)

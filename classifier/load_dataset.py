@@ -5,8 +5,11 @@ import argparse
 import glob
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
+sys.path.insert(0, '.')
 
-
+import detector.classes
+import pdb
 def parse_args(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -45,38 +48,32 @@ def file_provider(path):
     image_files.sort()
     grouped_label_files = glob.glob(f'{path}/grouped_labels*.npy')
     grouped_label_files.sort()
-    detailed_label_files = glob.glob(f'{path}/detailed_labels*.npy')
-    detailed_label_files.sort()
     shuffle = np.random.permutation(len(image_files))
     for i in range(len(shuffle)):
         images = np.load(image_files[shuffle[i]])
         grouped_labels = np.load(grouped_label_files[shuffle[i]])
-        detailed_labels = np.load(detailed_label_files[shuffle[i]])
-        yield images, grouped_labels, detailed_labels
+        yield images, grouped_labels
 
 
-def batch_provider(batch_size, path, image_dimensions=(0, 224, 224, 3),
-                   grouped_label_count=5, detailed_label_count=401):
+def batch_provider(batch_size, path, split_name, image_dimensions=(0, 224, 224, 3)):
+    grouped_label_count = len(detector.classes.splits_dict[split_name])
     image_overflow = np.empty(image_dimensions)
     grouped_label_overflow = np.empty((0, grouped_label_count))
-    detailed_label_overflow = np.empty((0, detailed_label_count))
-
-    for provided_images, provided_grouped_labels, provided_detailed_labels in file_provider(path):
+    
+    for provided_images, provided_grouped_labels in file_provider(f"{path}/{split_name}"):
         images = np.concatenate((image_overflow, provided_images))
         grouped_labels = np.concatenate((grouped_label_overflow, provided_grouped_labels))
-        detailed_labels = np.concatenate((detailed_label_overflow, provided_detailed_labels))
-
+        
         shuffle = np.random.permutation(len(images))
 
         for i in range(0, len(shuffle), batch_size):
             if i + batch_size < len(shuffle):
                 batch_indices = shuffle[i:i + batch_size]
-                yield images[batch_indices], grouped_labels[batch_indices], detailed_labels[batch_indices]
+                yield images[batch_indices], grouped_labels[batch_indices]
             else:
                 overflow_indices = shuffle[i:]
                 image_overflow = images[overflow_indices]
                 grouped_label_overflow = grouped_labels[overflow_indices]
-                detailed_label_overflow = detailed_labels[overflow_indices]
                 break
 
 
