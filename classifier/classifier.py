@@ -5,6 +5,7 @@ from torch.utils.data import Dataset, DataLoader
 
 import load_dataset
 
+import time
 import tqdm
 
 import argparse
@@ -42,7 +43,7 @@ class Trainer(object):
         losses = list()
         for image, label in tqdm.tqdm(train_dataloader):
             self.optimizer.zero_grad()
-            imageT = th.tensor(image, device=self.device)
+            imageT = th.tensor(image, device=self.device, requires_grad=True)
             imageT = imageT.reshape(imageT.shape[0], imageT.shape[3], imageT.shape[1], imageT.shape[2])
             labelT = th.tensor(label, device=self.device)
             est = self.model(imageT.double())
@@ -76,6 +77,10 @@ class Trainer(object):
             self.train(train_dataloader)
             self.crossvalidate(cv_dataloader)
             self.model.save("{}/model".format(output_path))
+
+def classify(path, data):
+    model = th.load(path)
+    return model(data)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
