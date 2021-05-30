@@ -3,7 +3,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torchvision import models
 from torch.utils.data import Dataset, DataLoader
 
-import load_dataset
+from classifier import load_dataset
 
 import time
 import tqdm
@@ -32,7 +32,7 @@ class Trainer(object):
         self.model = model.double().to(self.device)
         self.curr_epoch = 0
         self.optimizer = th.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-    
+
     def loss_function(self, input, target):
         _, labels = target.max(dim=1)
         return th.nn.CrossEntropyLoss()(input, labels)
