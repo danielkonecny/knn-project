@@ -19,7 +19,7 @@ from detector.dataset import load_mapillary_dataset
 
 def define_model(train_dts, val_dts, device, model, lr, iterations, batch_size):
     cfg = get_cfg()
-    cfg.OUTPUT_DIR = "output-" + datetime.datetime.now().strftime("%d-%m-%Y-(%H:%M:%S)")
+    cfg.OUTPUT_DIR = "output-training-" + datetime.datetime.now().strftime("%d-%m-%Y-(%H:%M:%S)")
     cfg.merge_from_file(model_zoo.get_config_file(model))
     cfg.MODEL.DEVICE = device
     cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(model)

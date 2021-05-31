@@ -1,6 +1,8 @@
 # KNN Project - Traffic Sign Detector
 # Authors: Daniel Konecny (xkonec75), Jan Pavlus (xpavlu10), David Sedlak (xsedla1d)
 import argparse
+import datetime
+import os
 import sys
 
 import cv2
@@ -24,7 +26,7 @@ def device_type(s: str) -> str:
 
 def exec_mode(s: str) -> str:
     if s not in ["detection&classification", "detection", "training"]:
-        raise argparse.ArgumentTypeError(f"Expecting either 'cpu' or 'gpu', got '{s}'.")
+        raise argparse.ArgumentTypeError(f"Expecting either 'detection&classification', 'detection' or 'training', got '{s}'.")
     return s
 
 
@@ -36,9 +38,9 @@ def parse_args(argv):
         help="Path to folder with dataset."
     )
     parser.add_argument(
-        "-i", "--image",
+        "-i", "--input",
         default="mapillary/mtsd_v2_fully_annotated_images.val/images/zZyl1YiP_5xGXcDAprC6sQ.jpg",
-        help="Path to input image."
+        help="Path to input image, or folder with images."
     )
     parser.add_argument(
         "--device",
@@ -92,9 +94,9 @@ def parse_args(argv):
         help="Batch size."
     )
     parser.add_argument(
-        "--preview",
+        "--visualize",
         action="store_true",
-        help="Preview images after loading the dataset and show inference result "
+        help="Preview images after loading the dataset and show output results."
              "after training.")
 
     args = parser.parse_args(argv)
@@ -134,43 +136,50 @@ def train_detector(args):
     evaluate(training_model, trainer)
 
 
-def draw_output(im, instances):
+def draw_output(im, instances, output_dir, filename, visualize=False):
     v = Visualizer(
         im[:, :, ::-1],
         scale=0.5,
         instance_mode=ColorMode.IMAGE  # remove the colors of unsegmented pixels
     )
     out = v.draw_instance_predictions(instances.to("cpu"))
-    cv2.imshow('', out.get_image()[:, :, ::-1])
-    cv2.waitKey(10000)
+    cv2.imwrite(f"{output_dir}/{filename}", out.get_image()[:, :, ::-1])
+    if visualize:
+        cv2.imshow('', out.get_image()[:, :, ::-1])
+        cv2.waitKey(10000)
 
 
-def detect(im, args, visuzalize=False):
+def detect(im, args, out_dir, filename, visuzalize=False):
     model = load_model(args.detector_weights, args.model, args.device)
     predictor = DefaultPredictor(model)
     outputs = predictor(im)
 
-    if visuzalize:
-        classes = outputs["instances"].get("pred_classes")
-        class_names = []
-        label_map = list(grouped_classes_dict.keys())
-        for cls in classes:
-            class_names.append(label_map[cls])
-        outputs["instances"].set("pred_classes", class_names)
-        draw_output(im, outputs["instances"])
+    classes = outputs["instances"].get("pred_classes")
+    class_names = []
+    label_map = list(grouped_classes_dict.keys())
+    for cls in classes:
+        class_names.append(label_map[cls])
+    outputs["instances"].set("pred_classes", class_names)
+    draw_output(im, outputs["instances"], out_dir, filename, visuzalize)
 
     return outputs
 
 
-def detect_and_classify(im, args, visualize=False):
+def detect_and_classify(im, args, out_dir, filename, visualize=False):
     annotations = detect(im, args, visuzalize=False)
     cropped_all = crop_detected_signs(im, annotations)
     for cropped in cropped_all:
         classifier_output = classify(args.classifier_weights, cropped)
         print(classifier_output)
 
-    if visualize:
-        draw_output(im, annotations["instances"])
+    draw_output(im, annotations["instances"], out_dir, filename, visualize)
+
+
+def execute_on_image(args, filename, im, out_dir):
+    if args.exec == "detection":
+        detect(im, args, out_dir, filename, visuzalize=args.visualize)
+    if args.exec == "detection&classification":
+        detect_and_classify(im, args, out_dir, filename, visualize=args.visualize)
 
 
 def main(argv=None):
@@ -179,11 +188,16 @@ def main(argv=None):
     if args.exec == "training":
         train_detector(args)
     else:
-        im = cv2.imread(args.image)
-        if args.exec == "detection":
-            detect(im, args, visuzalize=True)
-        if args.exec == "detection&classification":
-            detect_and_classify(im, args, visualize=True)
+        out_dir = f"output-{args.exec}-" + datetime.datetime.now().strftime("%d-%m-%Y-(%H:%M:%S)")
+        os.mkdir(out_dir)
+        if os.path.isdir(args.input):
+            for filename in os.listdir(args.input):
+                pth = f"{args.input}/{filename}"
+                if os.path.isfile(pth):
+                    print(pth)
+                    execute_on_image(args, os.path.basename(filename), cv2.imread(pth), out_dir)
+        else:
+            execute_on_image(args, os.path.basename(args.input), cv2.imread(args.input), out_dir)
 
 
 if __name__ == '__main__':
