@@ -93,4 +93,4 @@ def crop_detected_signs(im, annotations, dimension_y, dimension_x):
         numpyed = numpyed.astype('float32') / 255.0
         croped_all.append(numpyed)
 
-    return np.array(croped_all)
+    return croped_all

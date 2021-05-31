@@ -77,9 +77,14 @@ def predict(cfg, path, dataset):
         cv2.waitKey(1)
 
 
-def evaluate(cfg, trainer):
-    cfg.MODEL.WEIGHTS = os.path.join(cfg.OUTPUT_DIR, "model_final.pth")
-    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.7   # set a custom testing threshold
+def evaluate(cfg, trainer, treshold=0.7, weights=None):
+    if not weights == "unchanged":
+        if weights:
+            cfg.MODEL.WEIGHTS = os.path.join(cfg.OUTPUT_DIR, weights)
+        else:
+            cfg.MODEL.WEIGHTS = os.path.join(cfg.OUTPUT_DIR, "model_final.pth")
+
+    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = treshold
 
     evaluator = COCOEvaluator(
         "traffic_signs_val",
@@ -88,3 +93,17 @@ def evaluate(cfg, trainer):
     )
     val_loader = build_detection_test_loader(cfg, "traffic_signs_val")
     print(inference_on_dataset(trainer.model, val_loader, evaluator))
+
+
+def load_model(weights, base_model, device, treshold=0.4):
+    cfg = get_cfg()
+    cfg.OUTPUT_DIR = "output-" + datetime.datetime.now().strftime("%d-%m-%Y-(%H:%M:%S)")
+    cfg.merge_from_file(model_zoo.get_config_file(base_model))
+    cfg.MODEL.DEVICE = device
+    cfg.MODEL.WEIGHTS = weights
+    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = treshold
+    cfg.DATALOADER.NUM_WORKERS = 4
+    cfg.MODEL.ROI_HEADS.NUM_CLASSES = len(grouped_classes_dict.keys())
+
+    return cfg
+
