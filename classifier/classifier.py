@@ -13,23 +13,17 @@ import os
 
 import pdb
 
-class MapillaryDataset(Dataset):
-    def __init__(self, path):
-        self.images = list()
-        self.labels = dict()
-    def load_image(self, image):
-        return None
+import sys
+sys.path.insert(0, '.')
 
-    def __len__(self):
-        len(self.images)
-
-    def __getitem__(self, idx):
-        return self.load_image(self.images[idx]), self.labels[self.images[idx]]
+import detector.classes
 
 class Trainer(object):
-    def __init__(self, model = models.resnet50(pretrained=True), device = th.device("cuda")):
-        self.device = device
-        self.model = model.double().to(self.device)
+    def __init__(self, model = models.resnet50(pretrained=True), device = "cpu", numberOfClasses = 135):
+        self.device = th.device(device)
+        self.model = model
+        self.model.fc = th.nn.Linear(2048, numberOfClasses)
+        self.model = self.model.double().to(self.device)
         self.curr_epoch = 0
         self.optimizer = th.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
     
@@ -60,6 +54,8 @@ class Trainer(object):
         self.model.eval()
         with th.no_grad():
             losses = list()
+            correct = 0
+            counter = 0
             for image, label in tqdm.tqdm(cv_dataloader):
                 imageT = th.tensor(image, device=self.device)
                 imageT = imageT.reshape(imageT.shape[0], imageT.shape[3], imageT.shape[1], imageT.shape[2])
@@ -67,16 +63,24 @@ class Trainer(object):
                 est = self.model(imageT.double())
                 loss = self.loss_function(est, labelT)
                 losses.append(loss.item())
+                correct += (est.argmax(dim=1) == labelT.argmax(dim=1)).float().sum().cpu()
+                counter += image.shape[0]
+            accuracy = 100 * (correct / counter)
             self.writer.add_scalar("Cross-validation", sum(losses)/float(len(losses)), self.curr_epoch)
-            print("Epoch: {} Cross-validation: {}".format(self.curr_epoch, sum(losses)/float(len(losses))))
+            self.writer.add_scalar("Cross-validation accuracy", accuracy, self.curr_epoch)
+            print("Epoch: {} Cross-validation: {} Accurancy: {}".format(self.curr_epoch, sum(losses)/float(len(losses)), accuracy))
 
-    def run(self, epochs, train_dataloader, cv_dataloader, output_path):
+    def run(self, epochs, output_path, args):
         self.writer = SummaryWriter("{}/tensorboard".format(output_path))
+        cv_dataloader = load_dataset.batch_provider(batch_size = args.batch, path = args.val_dataset, split_name=args.split_name)
+        self.crossvalidate(cv_dataloader)
         for self.curr_epoch in range(epochs):
+            train_dataloader = load_dataset.batch_provider(batch_size = args.batch, path = args.train_dataset, split_name=args.split_name)
+            cv_dataloader = load_dataset.batch_provider(batch_size = args.batch, path = args.val_dataset, split_name=args.split_name)
             print("Epoch: {} of {}".format(self.curr_epoch,epochs))
             self.train(train_dataloader)
             self.crossvalidate(cv_dataloader)
-            self.model.save("{}/model".format(output_path))
+            th.save(self.model, "{}/model".format(output_path))
 
 def classify(path, data):
     model = th.load(path)
@@ -98,6 +102,11 @@ if __name__ == "__main__":
         "-s", "--split_name",
         default="warning",
         help='["warning", "other-sign", "information", "regulatory", "complementary"]'
+    )
+    parser.add_argument(
+        "-d", "--device",
+        default="cpu",
+        help='["cuda", "cpu"]'
     )
     parser.add_argument(
         "-o", "--output",
@@ -123,14 +132,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.train:
-        trainer = Trainer()
-        train_dataloader = load_dataset.batch_provider(batch_size = args.batch, path = args.train_dataset, split_name=args.split_name)
-        cv_dataloader = load_dataset.batch_provider(batch_size = args.batch, path = args.val_dataset, split_name=args.split_name)
-        '''
-        training_data = MapillaryDataset("pathtoit")
-        cv_data = MapillaryDataset("pathtoit")
-        train_dataloader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
-        cv_dataloader = DataLoader(cv_data, batch_size=batch_size, shuffle=True)
-        '''
+        trainer = Trainer(device = args.device, numberOfClasses = len(detector.classes.splits_dict[args.split_name]))
         os.makedirs(args.output, exist_ok=True)
-        trainer.run(epochs = args.epochs, train_dataloader = train_dataloader, cv_dataloader = cv_dataloader, output_path =  args.output)
+        trainer.run(epochs = args.epochs, output_path =  args.output, args = args)
