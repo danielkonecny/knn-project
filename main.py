@@ -64,7 +64,7 @@ def parse_args(argv):
     )
     parser.add_argument(
         "--detector-weights",
-        default="model_final.pth",
+        default="detector_weights.pth",
         help="path to trained detector weights."
     )
     parser.add_argument(
