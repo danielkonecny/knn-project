@@ -9,6 +9,8 @@ import numpy as np
 from pathlib import Path
 import time
 import sys
+import torch as th
+
 sys.path.insert(0, '.')
 
 import detector.classes
@@ -149,16 +151,6 @@ def get_detailed_labels(annotation, label_count):
     return labels
 
 
-# def get_splitted_labels(detailed, grouped, label_count):
-#     labels = np.zeros(len(detailed))
-#
-#     for i, label_id in enumerate(detailed):
-#         image_id = recompute_label(label_id, grouped[i])
-#         labels[i]= image_id
-#
-#     return labels
-
-
 def get_splitted_labels(annotation):
     labels = np.zeros(len(annotation['objects']))
 
@@ -176,6 +168,7 @@ def to_one_hot(values, vector_size):
         result[i][int(value)] = 1
 
     return result
+
 
 def recompute_label(label_id, split_id):
     label_name = list(detector.classes.classes_dict.keys())[int(label_id)]
@@ -210,6 +203,7 @@ def save_as_nd_array(path, samples, grouped_labels, detailed_labels, file_index)
 
 def split_save_as_nd_array(path, split_name, samples, labels, file_index):
     Path(f'{path}/{split_name}').mkdir(parents=True, exist_ok=True)
+    samples = samples.reshape((samples.shape[0], samples.shape[3], samples.shape[1], samples.shape[2]))
 
     try:
         np.save(f'{path}/{split_name}/images{file_index:03d}.npy', samples)
@@ -229,25 +223,20 @@ def split_save_as_nd_array(path, split_name, samples, labels, file_index):
 def main(argv=None):
     args = parse_args(argv)
     dimension_y, dimension_x, dimension_z = parse_dimensions(args.dimensions)
-    grouped_label_count = int(args.grouped_label)
-    detailed_label_count = int(args.detailed_label)
     split_names = list(detector.classes.grouped_classes_dict.keys())
     splits_samples = {}
     splits_labels = {}
     split_file_indexes = {}
+    splits_counts = {}
 
     image_names = get_all_samples(args.dataset, args.type)
 
     for split_name in split_names:
-        splits_samples[split_name] = np.empty((0, dimension_y, dimension_x, dimension_z))
-        splits_labels[split_name] = np.empty((0, len(detector.classes.splits_dict[split_name])))
+        splits_samples[split_name] = []
+        splits_labels[split_name] = []
+        splits_counts[split_name] = 0
         split_file_indexes[split_name] = 0
 
-    # samples = np.empty((0, dimension_y, dimension_x, dimension_z))
-    # grouped_labels = np.empty((0, grouped_label_count))
-    # detailed_labels = np.empty((0, detailed_label_count))
-    #
-    # file_index = 0
     image_count = len(image_names)
 
     for i, image_name in enumerate(image_names):
@@ -256,39 +245,22 @@ def main(argv=None):
 
         new_samples = extract_samples(image, annotation, dimension_y, dimension_x, dimension_z)
         new_grouped_labels, new_splitted_labels = get_labels(annotation)
-        # new_detailed_labels = get_detailed_labels(annotation, detailed_label_count)
-        # new_splitted_labels = get_splitted_labels(new_detailed_labels, new_grouped_labels, detailed_label_count)
 
         for split_name in split_names:
             split_mask = new_grouped_labels == detector.classes.grouped_classes_dict[split_name]
-            splits_samples[split_name] = np.concatenate((splits_samples[split_name], new_samples[np.where(split_mask)]))
-            splits_labels[split_name] = np.concatenate((splits_labels[split_name],
-                                                        to_one_hot(new_splitted_labels[np.where(split_mask)],
-                                                                   len(detector.classes.splits_dict[split_name]))))
+            samples = new_samples[np.where(split_mask)]
+            splits_counts[split_name] += len(samples)
+            splits_samples[split_name].append(samples)
+            splits_labels[split_name].append(to_one_hot(new_splitted_labels[np.where(split_mask)], len(detector.classes.splits_dict[split_name])))
 
-            if len(splits_samples[split_name]) > 200:
-                split_save_as_nd_array(args.output, split_name, splits_samples[split_name],
-                                       splits_labels[split_name], split_file_indexes[split_name])
+            if splits_counts[split_name] > 200:
+                split_save_as_nd_array(args.output, split_name, np.concatenate(splits_samples[split_name]),
+                                      np.concatenate(splits_labels[split_name]), split_file_indexes[split_name])
                 split_file_indexes[split_name] += 1
 
-                splits_samples[split_name] = np.empty(
-                    (0, dimension_y, dimension_x, dimension_z))
-                splits_labels[split_name] = np.empty(
-                    (0, len(detector.classes.splits_dict[split_name])))
-
-        # samples = np.concatenate((samples, new_samples))
-        # grouped_labels = np.concatenate((grouped_labels, new_grouped_labels))
-        # detailed_labels = np.concatenate((detailed_labels, new_detailed_labels))
-        #
-        # if len(samples) > 5000:
-        #     save_as_nd_array(args.output, samples, grouped_labels, detailed_labels, file_index)
-        #     file_index += 1
-        #
-        #     samples = np.empty((0, dimension_y, dimension_x, dimension_z))
-        #     grouped_labels = np.empty((0, grouped_label_count))
-        #     detailed_labels = np.empty((0, detailed_label_count))
-
-    # save_as_nd_array(args.output, samples, grouped_labels, detailed_labels, file_index)
+                splits_samples[split_name] = []
+                splits_labels[split_name] = []
+                splits_counts[split_name] = 0
 
     for split_name in split_names:
         split_save_as_nd_array(args.output, split_name, splits_samples[split_name],
