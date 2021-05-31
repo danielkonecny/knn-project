@@ -151,7 +151,12 @@ def detect(im, args, visuzalize=False):
     outputs = predictor(im)
 
     if visuzalize:
-        print(outputs["instances"])
+        classes = outputs["instances"].get("pred_classes")
+        class_names = []
+        label_map = list(grouped_classes_dict.keys())
+        for cls in classes:
+            class_names.append(label_map[cls])
+        outputs["instances"].set("pred_classes", class_names)
         draw_output(im, outputs["instances"])
 
     return outputs

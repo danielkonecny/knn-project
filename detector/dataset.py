@@ -79,7 +79,7 @@ def crop_detected_signs(im, annotations, dimension_y, dimension_x):
         boxes = annotations["instances"].get_fields()["pred_boxes"]
     except IndexError:
         # no annotations
-        return np.array([])
+        return []
 
     for box in boxes:
         x_min = math.floor(box[0])
