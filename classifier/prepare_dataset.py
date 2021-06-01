@@ -15,6 +15,7 @@ sys.path.insert(0, '.')
 
 import detector.classes
 
+
 def parse_args(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -58,25 +59,27 @@ def parse_dimensions(dim_string):
     return dimension_y, dimension_x, dimension_z
 
 
-def get_all_samples(path,typeOfData):
-    with open(f'{path}/mtsd_v2_fully_annotated_annotation/mtsd_v2_fully_annotated/splits/{typeOfData}.txt') as f:
+def get_all_samples(path, type_of_data):
+    with open(f'{path}/mtsd_v2_fully_annotated_annotation/mtsd_v2_fully_annotated/splits/{type_of_data}.txt') as f:
         lines = [line.rstrip() for line in f]
     return lines
 
 
-def load_image(path, filename, typeOfData):
+def load_image(path, filename, type_of_data):
     try:
-        image = Image.open(f'{path}/mtsd_v2_fully_annotated_images.{typeOfData}/images/{filename}.jpg')
+        image = Image.open(f'{path}/mtsd_v2_fully_annotated_images.{type_of_data}/images/{filename}.jpg')
     except OSError:
         time.sleep(3)
-        image = Image.open(f'{path}/mtsd_v2_fully_annotated_images.{typeOfData}/images/{filename}.jpg')
+        image = Image.open(f'{path}/mtsd_v2_fully_annotated_images.{type_of_data}/images/{filename}.jpg')
 
     try:
-        with open(f'{path}/mtsd_v2_fully_annotated_annotation/mtsd_v2_fully_annotated/annotations/{filename}.json') as f:
+        with open(
+                f'{path}/mtsd_v2_fully_annotated_annotation/mtsd_v2_fully_annotated/annotations/{filename}.json') as f:
             annotation = json.load(f)
     except OSError:
         time.sleep(3)
-        with open(f'{path}/mtsd_v2_fully_annotated_annotation/mtsd_v2_fully_annotated/annotations/{filename}.json') as f:
+        with open(
+                f'{path}/mtsd_v2_fully_annotated_annotation/mtsd_v2_fully_annotated/annotations/{filename}.json') as f:
             annotation = json.load(f)
 
     return image, annotation
@@ -118,15 +121,15 @@ def get_grouped_labels_one_hot(annotation, label_count):
 
 def get_labels(annotation):
     grouped_labels = np.zeros(len(annotation['objects']))
-    splitted_labels = np.zeros(len(annotation['objects']))
+    split_labels = np.zeros(len(annotation['objects']))
 
     for i, image_object in enumerate(annotation['objects']):
         group_label = image_object['label'].split('--')[0]
         image_label = detector.classes.grouped_classes_dict[group_label]
         grouped_labels[i] = image_label
-        splitted_labels[i] = detector.classes.splits_dict[group_label][image_object['label']]
+        split_labels[i] = detector.classes.splits_dict[group_label][image_object['label']]
 
-    return grouped_labels, splitted_labels
+    return grouped_labels, split_labels
 
 
 def get_detailed_labels_one_hot(annotation, label_count):
@@ -141,7 +144,7 @@ def get_detailed_labels_one_hot(annotation, label_count):
     return labels
 
 
-def get_detailed_labels(annotation, label_count):
+def get_detailed_labels(annotation):
     labels = np.zeros(len(annotation['objects']))
 
     for index, image_object in enumerate(annotation['objects']):
@@ -151,7 +154,7 @@ def get_detailed_labels(annotation, label_count):
     return labels
 
 
-def get_splitted_labels(annotation):
+def get_split_labels(annotation):
     labels = np.zeros(len(annotation['objects']))
 
     for i, image_object in enumerate(annotation['objects']):
@@ -244,18 +247,19 @@ def main(argv=None):
         image, annotation = load_image(args.dataset, image_name, args.type)
 
         new_samples = extract_samples(image, annotation, dimension_y, dimension_x, dimension_z)
-        new_grouped_labels, new_splitted_labels = get_labels(annotation)
+        new_grouped_labels, new_split_labels = get_labels(annotation)
 
         for split_name in split_names:
             split_mask = new_grouped_labels == detector.classes.grouped_classes_dict[split_name]
             samples = new_samples[np.where(split_mask)]
             splits_counts[split_name] += len(samples)
             splits_samples[split_name].append(samples)
-            splits_labels[split_name].append(to_one_hot(new_splitted_labels[np.where(split_mask)], len(detector.classes.splits_dict[split_name])))
+            splits_labels[split_name].append(
+                to_one_hot(new_split_labels[np.where(split_mask)], len(detector.classes.splits_dict[split_name])))
 
             if splits_counts[split_name] > 200:
                 split_save_as_nd_array(args.output, split_name, np.concatenate(splits_samples[split_name]),
-                                      np.concatenate(splits_labels[split_name]), split_file_indexes[split_name])
+                                       np.concatenate(splits_labels[split_name]), split_file_indexes[split_name])
                 split_file_indexes[split_name] += 1
 
                 splits_samples[split_name] = []

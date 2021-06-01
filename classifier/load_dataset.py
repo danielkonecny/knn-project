@@ -6,10 +6,13 @@ import glob
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
+
 sys.path.insert(0, '.')
 
 import detector.classes
 import pdb
+
+
 def parse_args(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -59,11 +62,11 @@ def batch_provider(batch_size, path, split_name, image_dimensions=(0, 224, 224, 
     grouped_label_count = len(detector.classes.splits_dict[split_name])
     image_overflow = np.empty(image_dimensions)
     grouped_label_overflow = np.empty((0, grouped_label_count))
-    
+
     for provided_images, provided_grouped_labels in file_provider(f"{path}/{split_name}"):
         images = np.concatenate((image_overflow, provided_images))
         grouped_labels = np.concatenate((grouped_label_overflow, provided_grouped_labels))
-        
+
         shuffle = np.random.permutation(len(images))
 
         for i in range(0, len(shuffle), batch_size):

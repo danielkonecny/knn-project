@@ -1,3 +1,6 @@
+# KNN Project - Traffic Sign Detector
+# Authors: Daniel Konecny (xkonec75), Jan Pavlus (xpavlu10), David Sedlak (xsedla1d)
+
 import torch as th
 from torch.utils.tensorboard import SummaryWriter
 from torchvision import models
@@ -71,8 +74,8 @@ class Trainer(object):
             self.writer.add_scalar("Cross-validation", sum(losses) / float(len(losses)), self.curr_epoch)
             self.writer.add_scalar("Cross-validation accuracy", accuracy, self.curr_epoch)
             print(
-                "Epoch: {} Cross-validation: {} Accurancy: {}".format(self.curr_epoch, sum(losses) / float(len(losses)),
-                                                                      accuracy))
+                "Epoch: {} Cross-validation: {} Accuracy: {}".format(self.curr_epoch, sum(losses) / float(len(losses)),
+                                                                     accuracy))
 
     def run(self, epochs, output_path, run_args):
         self.writer = SummaryWriter("{}/tensorboard".format(output_path))
