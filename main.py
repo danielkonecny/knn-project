@@ -174,17 +174,17 @@ def get_classification(predicted_class, predictions):
     prediction_index = np.argmax(predictions)
     sign_class = ""
     if predicted_class == "warning":
-        sign_class = list(detector.classes.splitted_warning_dict.keys())[
-            list(detector.classes.splitted_warning_dict.values()).index(prediction_index)]
+        sign_class = list(detector.classes.split_warning_dict.keys())[
+            list(detector.classes.split_warning_dict.values()).index(prediction_index)]
     elif predicted_class == "information":
-        sign_class = list(detector.classes.splitted_information_dict.keys())[
-            list(detector.classes.splitted_information_dict.values()).index(prediction_index)]
+        sign_class = list(detector.classes.split_information_dict.keys())[
+            list(detector.classes.split_information_dict.values()).index(prediction_index)]
     elif predicted_class == "regulatory":
-        sign_class = list(detector.classes.splitted_regulatory_dict.keys())[
-            list(detector.classes.splitted_regulatory_dict.values()).index(prediction_index)]
+        sign_class = list(detector.classes.split_regulatory_dict.keys())[
+            list(detector.classes.split_regulatory_dict.values()).index(prediction_index)]
     elif predicted_class == "complementary":
-        sign_class = list(detector.classes.splitted_complementary_dict.keys())[
-            list(detector.classes.splitted_complementary_dict.values()).index(prediction_index)]
+        sign_class = list(detector.classes.split_complementary_dict.keys())[
+            list(detector.classes.split_complementary_dict.values()).index(prediction_index)]
 
     return sign_class
 
