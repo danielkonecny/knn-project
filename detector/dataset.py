@@ -17,9 +17,9 @@ from detector.classes import grouped_classes_dict
 
 
 def load_mapillary_dataset(path, split="train"):
-    annotations_folder = path+"/mtsd_v2_fully_annotated_annotation" \
-                              "/mtsd_v2_fully_annotated/"
-    train_images_folder = path+"/mtsd_v2_fully_annotated_images." + split + "/images/"
+    annotations_folder = path + "/mtsd_v2_fully_annotated_annotation" \
+                                "/mtsd_v2_fully_annotated/"
+    train_images_folder = path + "/mtsd_v2_fully_annotated_images." + split + "/images/"
     images = set([os.path.splitext(f)[0] for f in os.listdir(train_images_folder)
                   if os.path.isfile(os.path.join(train_images_folder, f))])
 
@@ -35,15 +35,15 @@ def load_mapillary_dataset(path, split="train"):
 
                     annotations = []
                     for obj in annotation['objects']:
-                        annot = {
-                            'bbox' : [obj['bbox']['xmin'],
-                                      obj['bbox']['ymin'],
-                                      obj['bbox']['xmax'],
-                                      obj['bbox']['ymax']],
-                            'bbox_mode' : BoxMode.XYXY_ABS,
+                        new_annotation = {
+                            'bbox': [obj['bbox']['xmin'],
+                                     obj['bbox']['ymin'],
+                                     obj['bbox']['xmax'],
+                                     obj['bbox']['ymax']],
+                            'bbox_mode': BoxMode.XYXY_ABS,
                             'category_id': grouped_classes_dict[obj['label'].split('--')[0]]
                         }
-                        annotations.append(annot)
+                        annotations.append(new_annotation)
                     image_info = {
                         'image_id': filename,
                         'file_name': os.path.join(train_images_folder, filename + ".jpg"),
@@ -72,8 +72,8 @@ def preview_dataset(dataset, path):
 
 
 def crop_detected_signs(im, annotations, dimension_y, dimension_x):
-    pimage = Image.fromarray(im)
-    croped_all = []
+    loaded_image = Image.fromarray(im)
+    cropped_all = []
 
     try:
         boxes = annotations["instances"].get_fields()["pred_boxes"]
@@ -87,10 +87,10 @@ def crop_detected_signs(im, annotations, dimension_y, dimension_x):
         x_max = math.ceil(box[2])
         y_max = math.ceil(box[3])
 
-        cropped = pimage.crop((x_min, y_min, x_max, y_max))
+        cropped = loaded_image.crop((x_min, y_min, x_max, y_max))
         resized = cropped.resize((dimension_y, dimension_x), Image.ANTIALIAS)
         numpyed = np.array(resized)
         numpyed = numpyed.astype('float32') / 255.0
-        croped_all.append(numpyed)
+        cropped_all.append(numpyed)
 
-    return croped_all
+    return cropped_all

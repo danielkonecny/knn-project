@@ -1,5 +1,7 @@
 # PROJECT RELATED IGNORES
-output/
+output*/
+models/
+examples/
 
 # .idea editor config folder
 .idea

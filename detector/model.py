@@ -19,7 +19,7 @@ from detector.dataset import load_mapillary_dataset
 
 def define_model(train_dts, val_dts, device, model, lr, iterations, batch_size):
     cfg = get_cfg()
-    cfg.OUTPUT_DIR = "output-" + datetime.datetime.now().strftime("%d-%m-%Y-(%H:%M:%S)")
+    cfg.OUTPUT_DIR = "output-training-" + datetime.datetime.now().strftime("%d-%m-%Y-(%H:%M:%S)")
     cfg.merge_from_file(model_zoo.get_config_file(model))
     cfg.MODEL.DEVICE = device
     cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(model)
@@ -30,7 +30,7 @@ def define_model(train_dts, val_dts, device, model, lr, iterations, batch_size):
     cfg.SOLVER.IMS_PER_BATCH = 4
     cfg.SOLVER.BASE_LR = lr
     cfg.SOLVER.MAX_ITER = iterations
-    cfg.SOLVER.STEPS = [] # do not decay learning rate
+    cfg.SOLVER.STEPS = []  # do not decay learning rate
     cfg.TEST.EVAL_PERIOD = 50
     cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = batch_size
     cfg.MODEL.ROI_HEADS.NUM_CLASSES = len(grouped_classes_dict.keys())
@@ -53,7 +53,7 @@ def train(cfg):
 
 def predict(cfg, path, dataset):
     cfg.MODEL.WEIGHTS = os.path.join(cfg.OUTPUT_DIR, "model_final.pth")
-    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.7   # set a custom testing threshold
+    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.7  # set a custom testing threshold
 
     predictor = DefaultPredictor(cfg)
 
@@ -66,7 +66,7 @@ def predict(cfg, path, dataset):
             im[:, :, ::-1],
             metadata=MetadataCatalog.get(dataset),
             scale=0.5,
-            instance_mode=ColorMode.IMAGE   # remove the colors of unsegmented pixels
+            instance_mode=ColorMode.IMAGE  # remove the colors of unsegmented pixels
         )
         out = v.draw_instance_predictions(outputs["instances"].to("cpu"))
         print(outputs["instances"].pred_classes)
@@ -77,14 +77,14 @@ def predict(cfg, path, dataset):
         cv2.waitKey(1)
 
 
-def evaluate(cfg, trainer, treshold=0.7, weights=None):
+def evaluate(cfg, trainer, threshold=0.7, weights=None):
     if not weights == "unchanged":
         if weights:
             cfg.MODEL.WEIGHTS = os.path.join(cfg.OUTPUT_DIR, weights)
         else:
             cfg.MODEL.WEIGHTS = os.path.join(cfg.OUTPUT_DIR, "model_final.pth")
 
-    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = treshold
+    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = threshold
 
     evaluator = COCOEvaluator(
         "traffic_signs_val",
@@ -95,15 +95,14 @@ def evaluate(cfg, trainer, treshold=0.7, weights=None):
     print(inference_on_dataset(trainer.model, val_loader, evaluator))
 
 
-def load_model(weights, base_model, device, treshold=0.4):
+def load_model(weights, base_model, device, threshold=0.4):
     cfg = get_cfg()
     cfg.OUTPUT_DIR = "output-" + datetime.datetime.now().strftime("%d-%m-%Y-(%H:%M:%S)")
     cfg.merge_from_file(model_zoo.get_config_file(base_model))
     cfg.MODEL.DEVICE = device
     cfg.MODEL.WEIGHTS = weights
-    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = treshold
+    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = threshold
     cfg.DATALOADER.NUM_WORKERS = 4
     cfg.MODEL.ROI_HEADS.NUM_CLASSES = len(grouped_classes_dict.keys())
 
     return cfg
-
