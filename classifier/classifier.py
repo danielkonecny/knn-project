@@ -6,7 +6,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torchvision import models
 from torch.utils.data import Dataset, DataLoader
 
-from classifier import load_dataset
+import load_dataset
 
 import time
 import tqdm
@@ -36,6 +36,7 @@ class Trainer(object):
         self.model = self.model.double().to(self.device)
         self.curr_epoch = 0
         self.optimizer = th.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+        self.bestAcc = 0.0
 
     def train(self, train_dataloader):
         print("Training...")
@@ -43,18 +44,17 @@ class Trainer(object):
         losses = list()
         for image, label in tqdm.tqdm(train_dataloader):
             self.optimizer.zero_grad()
-            image_t = th.tensor(image, device=self.device, requires_grad=True)
-            image_t = image_t.reshape(image_t.shape[0], image_t.shape[3], image_t.shape[1], image_t.shape[2])
-            label_t = th.tensor(label, device=self.device)
-            est = self.model(image_t.double())
-            loss = loss_function(est, label_t)
+            imageT = th.tensor(image, device=self.device)
+            labelT = th.tensor(label, device=self.device)
+            est = self.model(imageT.double())
+            loss = self.loss_function(est, labelT)
             loss.backward()
             self.optimizer.step()
             losses.append(loss.item())
         self.writer.add_scalar("Train", sum(losses) / float(len(losses)), self.curr_epoch)
         print("Epoch: {} Train: {}".format(self.curr_epoch, sum(losses) / float(len(losses))))
 
-    def crossvalidate(self, cv_dataloader):
+    def crossvalidate(self, cv_dataloader, output_path):
         print("Validating...")
         self.model.eval()
         with th.no_grad():
@@ -62,16 +62,18 @@ class Trainer(object):
             correct = 0
             counter = 0
             for image, label in tqdm.tqdm(cv_dataloader):
-                image_t = th.tensor(image, device=self.device)
-                image_t = image_t.reshape(image_t.shape[0], image_t.shape[3], image_t.shape[1], image_t.shape[2])
-                label_t = th.tensor(label, device=self.device)
-                est = self.model(image_t.double())
-                loss = loss_function(est, label_t)
+                imageT = th.tensor(image, device=self.device)
+                labelT = th.tensor(label, device=self.device)
+                est = self.model(imageT.double())
+                loss = self.loss_function(est, labelT)
                 losses.append(loss.item())
                 correct += (est.argmax(dim=1) == label_t.argmax(dim=1)).float().sum().cpu()
                 counter += image.shape[0]
             accuracy = 100 * (correct / counter)
-            self.writer.add_scalar("Cross-validation", sum(losses) / float(len(losses)), self.curr_epoch)
+            if self.bestAcc < accuracy:
+                th.save(self.model, "{}/model".format(output_path))
+                self.bestAcc = accuracy
+            self.writer.add_scalar("Cross-validation", sum(losses)/float(len(losses)), self.curr_epoch)
             self.writer.add_scalar("Cross-validation accuracy", accuracy, self.curr_epoch)
             print(
                 "Epoch: {} Cross-validation: {} Accuracy: {}".format(self.curr_epoch, sum(losses) / float(len(losses)),
@@ -79,9 +81,8 @@ class Trainer(object):
 
     def run(self, epochs, output_path, run_args):
         self.writer = SummaryWriter("{}/tensorboard".format(output_path))
-        cv_dataloader = load_dataset.batch_provider(batch_size=run_args.batch, path=run_args.val_dataset,
-                                                    split_name=run_args.split_name)
-        self.crossvalidate(cv_dataloader)
+        cv_dataloader = load_dataset.batch_provider(batch_size = run_args.batch, path = run_args.val_dataset, split_name=run_args.split_name)
+        self.crossvalidate(cv_dataloader, output_path)
         for self.curr_epoch in range(epochs):
             train_dataloader = load_dataset.batch_provider(batch_size=run_args.batch, path=run_args.train_dataset,
                                                            split_name=run_args.split_name)
@@ -89,8 +90,7 @@ class Trainer(object):
                                                         split_name=run_args.split_name)
             print("Epoch: {} of {}".format(self.curr_epoch, epochs))
             self.train(train_dataloader)
-            self.crossvalidate(cv_dataloader)
-            th.save(self.model, "{}/model".format(output_path))
+            self.crossvalidate(cv_dataloader, output_path)
 
 
 def classify(path, data, device):
