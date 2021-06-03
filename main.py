@@ -203,8 +203,6 @@ def detect_and_classify(im, args, out_dir, filename, visualize=False):
         cropped = cropped.reshape((1, cropped.shape[2], cropped.shape[0], cropped.shape[1]))
         if predicted_class == 'other-sign':
             print(f"Box: {box} - Class: {predicted_class}")
-        elif predicted_class == 'complementary':
-            print(f"Box: {box} - Class: {predicted_class}")
         else:
             model_path = args.classifier_weights + "/" + predicted_class
             classifier_output = classify(model_path, cropped, args.device)
