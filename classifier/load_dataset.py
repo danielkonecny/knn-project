@@ -55,7 +55,7 @@ def file_provider(path):
         yield images, grouped_labels
 
 
-def batch_provider(batch_size, path, split_name, image_dimensions=(0, 224, 224, 3)):
+def batch_provider(batch_size, path, split_name, image_dimensions=(0, 3, 224, 224)):
     grouped_label_count = len(detector.classes.splits_dict[split_name])
     image_overflow = np.empty(image_dimensions)
     grouped_label_overflow = np.empty((0, grouped_label_count))
