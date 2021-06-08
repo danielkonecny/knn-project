@@ -3,14 +3,14 @@
 
 import argparse
 import glob
-import numpy as np
-import matplotlib.pyplot as plt
 import sys
 
-sys.path.insert(0, '.')
+import numpy as np
+import matplotlib.pyplot as plt
 
 import detector.classes
-import pdb
+
+sys.path.insert(0, '.')
 
 
 def parse_args(argv):

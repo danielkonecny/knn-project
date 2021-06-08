@@ -1,26 +1,19 @@
 # KNN Project - Traffic Sign Detector
 # Authors: Daniel Konecny (xkonec75), Jan Pavlus (xpavlu10), David Sedlak (xsedla1d)
 
+import tqdm
+import argparse
+import os
+import sys
+
 import torch as th
 from torch.utils.tensorboard import SummaryWriter
 from torchvision import models
-from torch.utils.data import Dataset, DataLoader
 
-import load_dataset
-
-import time
-import tqdm
-
-import argparse
-import os
-
-import pdb
-
-import sys
+from classifier import load_dataset
+import detector.classes
 
 sys.path.insert(0, '.')
-
-import detector.classes
 
 
 def loss_function(loss_input, target):

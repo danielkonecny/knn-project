@@ -9,11 +9,10 @@ import numpy as np
 from pathlib import Path
 import time
 import sys
-import torch as th
-
-sys.path.insert(0, '.')
 
 import detector.classes
+
+sys.path.insert(0, '.')
 
 
 def parse_args(argv):

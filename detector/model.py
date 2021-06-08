@@ -95,7 +95,7 @@ def evaluate(cfg, trainer, threshold=0.7, weights=None):
     print(inference_on_dataset(trainer.model, val_loader, evaluator))
 
 
-def load_model(weights, base_model, device, threshold=0.4):
+def load_model(weights, base_model, device, threshold=0.6):
     cfg = get_cfg()
     cfg.OUTPUT_DIR = "output-" + datetime.datetime.now().strftime("%d-%m-%Y-(%H:%M:%S)")
     cfg.merge_from_file(model_zoo.get_config_file(base_model))

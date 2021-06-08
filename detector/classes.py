@@ -2,7 +2,6 @@
 # Authors: Daniel Konecny (xkonec75), Jan Pavlus (xpavlu10), David Sedlak (xsedla1d)
 
 import json
-
 from os import walk
 
 
